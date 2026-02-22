@@ -246,10 +246,31 @@ class ChatProvider extends ChangeNotifier {
 
   // --- Image Recognition ---
   Future<void> recognizeFood(Uint8List imageBytes) async {
-    addSystemMessage('📷 正在分析食物图片...');
+    final List<String> tips = [
+      '📷 正在分析食物图片...',
+      '🔍 正在识别食物种类...',
+      '⚖️ 正在估算热量和营养...',
+      '🤖 小松正在努力思考...',
+      '✨ 结果马上就来...'
+    ];
+    int tipIndex = 0;
+    
+    addSystemMessage(tips[tipIndex]);
+    final messageId = _messages.last.id;
+
+    // 启动定时器动态更新提示语
+    final timer = Timer.periodic(const Duration(seconds: 4), (t) {
+      if (_messages.isNotEmpty && _messages.last.id == messageId) {
+        tipIndex = (tipIndex + 1) % tips.length;
+        updateLastMessage(tips[tipIndex], isStreaming: false);
+      } else {
+        t.cancel();
+      }
+    });
     
     try {
       final result = await _apiService.recognizeFood(imageBytes);
+      timer.cancel(); // 成功后立即停止定时器
       
       final firstRaw = result['raw_data'][0];
       final nutrients = firstRaw['nutrients'] ?? {

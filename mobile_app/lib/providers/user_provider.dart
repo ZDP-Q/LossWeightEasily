@@ -23,14 +23,21 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  String get displayName => _user?.username ?? '新用户';
+  // 这里的 displayName 将会自动调用 UserProfile 内部的逻辑（优先昵称，后账号名）
+  String get displayName => _user?.displayName ?? '新用户';
+  
   double? get bmr => _user?.bmr;
   double? get tdee => _user?.tdee;
   double? get dailyCalorieGoal => _user?.dailyCalorieGoal;
   double? get targetWeight => _user?.targetWeightKg;
   double? get initialWeight => _user?.initialWeightKg;
 
-  Future<void> loadUser() async {
+  Future<void> loadUser({bool forceRefresh = false}) async {
+    // 如果已经有数据且不是强制刷新，直接返回
+    if (_user != null && !forceRefresh) {
+      return;
+    }
+
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -45,6 +52,7 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> updateProfile({
+    String? nickname,
     int? age,
     String? gender,
     double? height,
@@ -57,6 +65,7 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
     try {
       _user = await _api.updateProfile(
+        nickname: nickname,
         age: age,
         gender: gender,
         height: height,

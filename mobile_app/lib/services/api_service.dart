@@ -105,6 +105,7 @@ class ApiService {
   }
 
   Future<UserProfile> updateProfile({
+    String? nickname,
     int? age,
     String? gender,
     double? height,
@@ -113,14 +114,14 @@ class ApiService {
     String? activityLevel,
   }) async {
     try {
-      final body = {
-        'age': ?age,
-        'gender': ?gender,
-        'height_cm': ?height,
-        'initial_weight_kg': ?initialWeight,
-        'target_weight_kg': ?targetWeight,
-        'activity_level': ?activityLevel,
-      };
+      final Map<String, dynamic> body = {};
+      if (nickname != null) body['nickname'] = nickname;
+      if (age != null) body['age'] = age;
+      if (gender != null) body['gender'] = gender;
+      if (height != null) body['height_cm'] = height;
+      if (initialWeight != null) body['initial_weight_kg'] = initialWeight;
+      if (targetWeight != null) body['target_weight_kg'] = targetWeight;
+      if (activityLevel != null) body['activity_level'] = activityLevel;
       
       final response = await http
           .put(
@@ -129,17 +130,19 @@ class ApiService {
             body: json.encode(body),
           )
           .timeout(_timeout);
+          
       if (response.statusCode == 200) {
         return UserProfile.fromJson(json.decode(utf8.decode(response.bodyBytes)));
       }
-      throw ApiException('更新个人资料失败');
+      final error = json.decode(utf8.decode(response.bodyBytes));
+      throw ApiException(error['detail'] ?? '更新个人资料失败');
     } catch (e) {
       throw _handleError(e);
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Food & Weight
+  // 其余代码保持不变...
   // ---------------------------------------------------------------------------
   
   Future<List<FoodSearchResult>> searchFood(String query) async {
@@ -164,34 +167,35 @@ class ApiService {
   Future<List<FoodLog>> getTodayFoodLogs() async {
     try {
       final response = await http
-          .get(Uri.parse('$baseUrl/food-log'), headers: _headers)
+          .get(Uri.parse('$baseUrl/food-logs/today'), headers: _headers)
           .timeout(_timeout);
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
         return data.map((j) => FoodLog.fromJson(j)).toList();
       }
-      throw ApiException('获取饮食记录失败');
+      throw ApiException('获取饮食记录失败 (${response.statusCode})');
     } catch (e) {
       throw _handleError(e);
     }
   }
 
-  Future<FoodLog> addFoodLog(String foodName, double calories) async {
+  Future<FoodLog> addFoodLog(String foodName, double calories, {String? mealType}) async {
     try {
       final response = await http
           .post(
-            Uri.parse('$baseUrl/food-log'),
+            Uri.parse('$baseUrl/food-logs'),
             headers: _headers,
             body: json.encode({
               'food_name': foodName,
               'calories': calories,
+              'meal_type': mealType ?? 'unknown',
             }),
           )
           .timeout(_timeout);
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return FoodLog.fromJson(json.decode(utf8.decode(response.bodyBytes)));
       }
-      throw ApiException('记录饮食失败');
+      throw ApiException('记录饮食失败 (${response.statusCode})');
     } catch (e) {
       throw _handleError(e);
     }
@@ -235,10 +239,9 @@ class ApiService {
 
   Future<WeightRecord> updateWeight(int id, double? weight, String? notes) async {
     try {
-      final body = {
-        'weight_kg': ?weight,
-        'notes': ?notes,
-      };
+      final Map<String, dynamic> body = {};
+      if (weight != null) body['weight_kg'] = weight;
+      if (notes != null) body['notes'] = notes;
       
       final response = await http
           .put(
@@ -267,10 +270,6 @@ class ApiService {
       throw _handleError(e);
     }
   }
-
-  // ---------------------------------------------------------------------------
-  // AI & Chat
-  // ---------------------------------------------------------------------------
 
   Future<List<Map<String, dynamic>>> getChatHistory({int limit = 20}) async {
     try {
@@ -312,12 +311,11 @@ class ApiService {
     double? calorieGoal,
   }) async {
     try {
-      final body = {
-        'ingredients': ?ingredients,
-        'preferences': ?preferences,
-        'restrictions': ?restrictions,
-        'calorie_goal': ?calorieGoal,
-      };
+      final Map<String, dynamic> body = {};
+      if (ingredients != null) body['ingredients'] = ingredients;
+      if (preferences != null) body['preferences'] = preferences;
+      if (restrictions != null) body['restrictions'] = restrictions;
+      if (calorieGoal != null) body['calorie_goal'] = calorieGoal;
       
       final response = await http
           .post(

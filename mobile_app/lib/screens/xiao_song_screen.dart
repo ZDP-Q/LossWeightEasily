@@ -155,6 +155,118 @@ class _XiaoSongScreenState extends State<XiaoSongScreen> {
     _scrollToBottom();
   }
 
+  void _showActionSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(left: 8, bottom: 20),
+              child: Text(
+                '工具箱',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            GridView.count(
+              shrinkWrap: true,
+              crossAxisCount: 4,
+              mainAxisSpacing: 20,
+              crossAxisSpacing: 10,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _buildActionItem(
+                  icon: FontAwesomeIcons.basketShopping,
+                  label: '添加食材',
+                  color: Colors.orange,
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.read<ChatProvider>().toggleIngredientMode();
+                  },
+                ),
+                _buildActionItem(
+                  icon: FontAwesomeIcons.magnifyingGlass,
+                  label: '热量查询',
+                  color: Colors.blue,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showFoodQueryDialog();
+                  },
+                ),
+                _buildActionItem(
+                  icon: FontAwesomeIcons.camera,
+                  label: '拍照识别',
+                  color: Colors.green,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(ImageSource.camera);
+                  },
+                ),
+                _buildActionItem(
+                  icon: FontAwesomeIcons.image,
+                  label: '相册选择',
+                  color: Colors.purple,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(ImageSource.gallery);
+                  },
+                ),
+                // 可以在这里轻松添加更多功能...
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionItem({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _submitIngredients() {
     final chatProvider = context.read<ChatProvider>();
     if (chatProvider.selectedIngredients.isEmpty) {
@@ -206,63 +318,8 @@ class _XiaoSongScreenState extends State<XiaoSongScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final textPrimary = theme.textTheme.bodyMedium?.color ?? (isDark ? Colors.white : Colors.black87);
     
-    // User bubble style (fixed since it always has primary background)
-    _userMarkdownStyle = MarkdownStyleSheet(
-      p: const TextStyle(color: Colors.white, fontSize: 15.5, height: 1.6),
-      strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-      h1: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.bold),
-      h2: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
-      h3: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-      listBullet: const TextStyle(color: Colors.white, fontSize: 15),
-      listIndent: 22,
-      blockquoteDecoration: const BoxDecoration(
-        color: Colors.white12,
-        border: Border(left: BorderSide(color: Colors.white38, width: 4)),
-      ),
-      code: TextStyle(
-        backgroundColor: Colors.black.withValues(alpha: 0.12),
-        color: Colors.white,
-        fontFamily: 'monospace',
-        fontSize: 13.5,
-      ),
-      codeblockDecoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.26),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      tableBorder: TableBorder.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
-      tableBody: const TextStyle(color: Colors.white, fontSize: 13),
-      tableHead: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-      tableCellsPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-    );
-
-    // Assistant bubble style (dynamic based on theme)
-    _assistantMarkdownStyle = MarkdownStyleSheet(
-      p: TextStyle(color: textPrimary, fontSize: 15.5, height: 1.6),
-      strong: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
-      h1: const TextStyle(color: AppColors.primary, fontSize: 19, fontWeight: FontWeight.bold),
-      h2: const TextStyle(color: AppColors.primary, fontSize: 17, fontWeight: FontWeight.bold),
-      h3: const TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold),
-      listBullet: const TextStyle(color: AppColors.primary, fontSize: 15),
-      listIndent: 22,
-      blockquoteDecoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.05),
-        border: const Border(left: BorderSide(color: AppColors.primary, width: 4)),
-      ),
-      code: TextStyle(
-        backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-        color: AppColors.primary,
-        fontFamily: 'monospace',
-        fontSize: 13.5,
-      ),
-      codeblockDecoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      tableBorder: TableBorder.all(color: AppColors.border.withValues(alpha: 0.3), width: 1),
-      tableBody: TextStyle(color: textPrimary, fontSize: 13),
-      tableHead: TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
-      tableCellsPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-    );
+    _userMarkdownStyle = _buildMarkdownStyle(true, textPrimary);
+    _assistantMarkdownStyle = _buildMarkdownStyle(false, textPrimary);
 
     return Scaffold(
       appBar: AppBar(
@@ -316,7 +373,7 @@ class _XiaoSongScreenState extends State<XiaoSongScreen> {
     final selectedIngredients = context.select<ChatProvider, List<String>>((p) => p.selectedIngredients);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(top: BorderSide(color: AppColors.border.withValues(alpha: 0.2))),
@@ -331,22 +388,6 @@ class _XiaoSongScreenState extends State<XiaoSongScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: [
-                _buildQuickAction(
-                  isIngredientMode ? '✨ 退出模式' : '🥗 添加食材', 
-                  chatProvider.toggleIngredientMode
-                ),
-                const SizedBox(width: 8),
-                _buildQuickAction('热量查询', () => _showFoodQueryDialog()),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          
           if (isIngredientMode)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -360,11 +401,19 @@ class _XiaoSongScreenState extends State<XiaoSongScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('🥗 已选食材', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
-                        if (selectedIngredients.isNotEmpty)
-                          TextButton(
-                            onPressed: _submitIngredients,
-                            child: const Text('生成食谱', style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
+                        Row(
+                          children: [
+                            TextButton(
+                              onPressed: chatProvider.toggleIngredientMode,
+                              child: const Text('退出模式', style: TextStyle(color: AppColors.textSecondary)),
+                            ),
+                            if (selectedIngredients.isNotEmpty)
+                              TextButton(
+                                onPressed: _submitIngredients,
+                                child: const Text('生成食谱', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                          ],
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -408,8 +457,8 @@ class _XiaoSongScreenState extends State<XiaoSongScreen> {
           Row(
             children: [
               _buildIconButton(
-                icon: FontAwesomeIcons.camera,
-                onTap: () => _pickImage(ImageSource.camera),
+                icon: FontAwesomeIcons.circlePlus,
+                onTap: _showActionSheet,
                 color: AppColors.primary,
               ),
               const SizedBox(width: 12),
@@ -533,22 +582,36 @@ class _XiaoSongScreenState extends State<XiaoSongScreen> {
     );
   }
 
-  Widget _buildQuickAction(String label, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w500),
-        ),
+  MarkdownStyleSheet _buildMarkdownStyle(bool isUser, Color textPrimary) {
+    final baseColor = isUser ? Colors.white : textPrimary;
+    final accentColor = isUser ? Colors.white : AppColors.primary;
+
+    return MarkdownStyleSheet(
+      p: TextStyle(color: baseColor, fontSize: 15.5, height: 1.6),
+      strong: TextStyle(color: accentColor, fontWeight: FontWeight.bold),
+      h1: TextStyle(color: accentColor, fontSize: 19, fontWeight: FontWeight.bold),
+      h2: TextStyle(color: accentColor, fontSize: 17, fontWeight: FontWeight.bold),
+      h3: TextStyle(color: accentColor, fontSize: 16, fontWeight: FontWeight.bold),
+      listBullet: TextStyle(color: accentColor, fontSize: 15),
+      listIndent: 28, // 增加缩进，让子列表更明显
+      blockquoteDecoration: BoxDecoration(
+        color: isUser ? Colors.white12 : AppColors.primary.withValues(alpha: 0.05),
+        border: Border(left: BorderSide(color: isUser ? Colors.white38 : AppColors.primary, width: 4)),
       ),
+      code: TextStyle(
+        backgroundColor: isUser ? Colors.black.withValues(alpha: 0.12) : AppColors.primary.withValues(alpha: 0.08),
+        color: isUser ? Colors.white : AppColors.primary,
+        fontFamily: 'monospace',
+        fontSize: 13.5,
+      ),
+      codeblockDecoration: BoxDecoration(
+        color: isUser ? Colors.black.withValues(alpha: 0.26) : Colors.grey.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      tableBorder: TableBorder.all(color: (isUser ? Colors.white : AppColors.border).withValues(alpha: 0.6), width: 1), // 提高边框对比度
+      tableBody: TextStyle(color: baseColor, fontSize: 13),
+      tableHead: TextStyle(color: baseColor, fontWeight: FontWeight.bold),
+      tableCellsPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
     );
   }
 }

@@ -1,16 +1,20 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/navigation_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/weight_provider.dart';
 import '../providers/food_log_provider.dart';
+import '../services/api_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/bmr_calculator.dart';
 import '../widgets/glass_card.dart';
+import 'recognition_result_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -20,6 +24,9 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  final ImagePicker _picker = ImagePicker();
+  bool _isRecognizing = false;
+
   @override
   void initState() {
     super.initState();
@@ -36,6 +43,115 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context.read<WeightProvider>().loadHistory(),
       context.read<FoodLogProvider>().loadTodayLogs(),
     ]);
+  }
+
+  Future<void> _takePhotoAndRecognize() async {
+    final XFile? photo = await _picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 80,
+    );
+
+    if (photo == null) return;
+
+    setState(() => _isRecognizing = true);
+    _showRecognitionLoading(); // 显示增强版加载弹窗
+
+    try {
+      final imageBytes = await photo.readAsBytes();
+      final result = await ApiService().recognizeFood(imageBytes);
+
+      if (!mounted) return;
+      Navigator.pop(context); // 关闭加载弹窗
+
+      final foodName = result['final_food_name'] ?? '未知食物';
+      final calories = (result['final_estimated_calories'] as num).toDouble();
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RecognitionResultScreen(
+            imagePath: photo.path,
+            foodName: foodName,
+            calories: calories,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // 确保关闭弹窗
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('识别失败: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRecognizing = false);
+    }
+  }
+
+  void _showRecognitionLoading() {
+    final List<String> tips = [
+      '正在把照片发给小松...',
+      '正在仔细观察食物细节...',
+      '正在翻阅卡路里百科全书...',
+      '正在努力估算份量...',
+      '结果马上就要出来啦...',
+    ];
+    int currentTipIndex = 0;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            // 设置定时器切换文案
+            Timer(const Duration(seconds: 4), () {
+              if (context.mounted) {
+                setDialogState(() {
+                  currentTipIndex = (currentTipIndex + 1) % tips.length;
+                });
+              }
+            });
+
+            return PopScope(
+              canPop: false,
+              child: AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                content: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 60,
+                        height: 60,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 5,
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      Text(
+                        tips[currentTipIndex],
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'AI 识别可能需要约 15-20 秒',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -119,64 +235,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
     );
-  }
-
-  void _showWeightInputDialog(BuildContext context) {
-     showDialog(
-       context: context,
-       builder: (context) {
-         final controller = TextEditingController();
-         return AlertDialog(
-           title: const Text('记录今日体重'),
-           content: TextField(
-             controller: controller,
-             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-             decoration: const InputDecoration(
-               labelText: '当前体重 (kg)', 
-               hintText: '例如: 65.5',
-               suffixText: 'kg'
-             ),
-             autofocus: true,
-           ),
-           actions: [
-             TextButton(
-               onPressed: () => Navigator.pop(context), 
-               child: const Text('取消', style: TextStyle(color: AppColors.textSecondary))
-             ),
-             ElevatedButton(
-               onPressed: () async {
-                 final weightStr = controller.text.trim();
-                 if (weightStr.isNotEmpty) {
-                   final weight = double.tryParse(weightStr);
-                   if (weight != null) {
-                     Navigator.pop(context);
-                     try {
-                       await context.read<WeightProvider>().addRecord(weight);
-                       if (context.mounted) {
-                         ScaffoldMessenger.of(context).showSnackBar(
-                           const SnackBar(content: Text('体重记录成功！'), backgroundColor: Colors.green),
-                         );
-                       }
-                     } catch (e) {
-                       if (context.mounted) {
-                         ScaffoldMessenger.of(context).showSnackBar(
-                           SnackBar(content: Text('记录失败: $e'), backgroundColor: Colors.red),
-                         );
-                       }
-                     }
-                   }
-                 }
-               },
-               style: ElevatedButton.styleFrom(
-                 backgroundColor: AppColors.primary,
-                 foregroundColor: Colors.white,
-               ),
-               child: const Text('保存记录'),
-             ),
-           ],
-         );
-       },
-     );
   }
 
   Widget _buildSummaryCards(BuildContext context, Color secondaryColor) {
@@ -473,14 +531,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('今日摄入', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  Row(
                     children: [
-                      Text('${total.toStringAsFixed(0)} kcal', 
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                      Text('总摄入量', style: TextStyle(fontSize: 10, color: secondaryColor)),
+                      _buildActionIcon(
+                        icon: _isRecognizing ? FontAwesomeIcons.spinner : FontAwesomeIcons.camera,
+                        onTap: _isRecognizing ? null : _takePhotoAndRecognize,
+                        isLoading: _isRecognizing,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildActionIcon(
+                        icon: FontAwesomeIcons.plus,
+                        onTap: () => _showFoodInputDialog(context),
+                      ),
                     ],
                   ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('总计摄入', style: TextStyle(fontSize: 12, color: secondaryColor)),
+                  Text('${total.toStringAsFixed(0)} kcal', 
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary)),
                 ],
               ),
               const Divider(height: 24),
@@ -513,7 +586,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   const Icon(FontAwesomeIcons.utensils, size: 13, color: AppColors.primary),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: Text(log.foodName, style: const TextStyle(fontSize: 14)),
+                                    child: Text(
+                                      '${log.foodName} (${_getMealName(log.mealType)})', 
+                                      style: const TextStyle(fontSize: 14)
+                                    ),
                                   ),
                                   Text('${log.calories.toStringAsFixed(0)} kcal', 
                                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
@@ -527,6 +603,167 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2, end: 0);
+      },
+    );
+  }
+
+  Widget _buildActionIcon({required IconData icon, required VoidCallback? onTap, bool isLoading = false}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: isLoading 
+            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+            : Icon(icon, size: 14, color: AppColors.primary),
+        ),
+      ),
+    );
+  }
+
+  void _showFoodInputDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final calorieController = TextEditingController();
+    String selectedMeal = 'breakfast';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('手动记录饮食'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: '食物名称', hintText: '例如: 苹果'),
+                    autofocus: true,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: calorieController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: '热量 (kcal)', hintText: '例如: 52'),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedMeal,
+                    decoration: const InputDecoration(labelText: '餐次'),
+                    items: const [
+                      DropdownMenuItem(value: 'breakfast', child: Text('早餐')),
+                      DropdownMenuItem(value: 'lunch', child: Text('午餐')),
+                      DropdownMenuItem(value: 'dinner', child: Text('晚餐')),
+                      DropdownMenuItem(value: 'snack', child: Text('加餐')),
+                    ],
+                    onChanged: (val) => setDialogState(() => selectedMeal = val!),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (nameController.text.isNotEmpty && calorieController.text.isNotEmpty) {
+                      final cal = double.tryParse(calorieController.text);
+                      if (cal != null) {
+                        Navigator.pop(context);
+                        try {
+                          await context.read<FoodLogProvider>().addLog(
+                            nameController.text, 
+                            cal, 
+                            mealType: selectedMeal
+                          );
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('添加失败: $e')));
+                          }
+                        }
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                  child: const Text('保存'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _getMealName(String mealType) {
+    switch (mealType) {
+      case 'breakfast': return '早餐';
+      case 'lunch': return '午餐';
+      case 'dinner': return '晚餐';
+      case 'snack': return '加餐';
+      default: return '未知';
+    }
+  }
+
+  void _showWeightInputDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('记录今日体重'),
+          content: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: '当前体重 (kg)', 
+              hintText: '例如: 65.5',
+              suffixText: 'kg'
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), 
+              child: const Text('取消', style: TextStyle(color: AppColors.textSecondary))
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final weightStr = controller.text.trim();
+                if (weightStr.isNotEmpty) {
+                  final weight = double.tryParse(weightStr);
+                  if (weight != null) {
+                    Navigator.pop(context);
+                    try {
+                      await context.read<WeightProvider>().addRecord(weight);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('体重记录成功！'), backgroundColor: Colors.green),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('记录失败: $e'), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('保存记录'),
+            ),
+          ],
+        );
       },
     );
   }

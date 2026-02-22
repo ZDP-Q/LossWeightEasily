@@ -74,7 +74,7 @@ def _build_user_info(user, weight_service: WeightService) -> str:
                 return f"提示：当前用户资料不完整（缺失：{', '.join(missing_info)}）。请引导用户补充这些信息，以便计算 TDEE 并制定个性化减重计划。"
 
             return (
-                f"用户信息：姓名 {user.name}, 性别 {user.gender}, 当前体重 {current_weight}kg, "
+                f"用户信息：姓名 {user.nickname or user.username}, 性别 {user.gender}, 当前体重 {current_weight}kg, "
                 f"身高 {user.height_cm}cm, 年龄 {user.age}, "
                 f"活动水平 {user.activity_level}, "
                 f"TDEE {user.tdee or 0:.0f}kcal, "

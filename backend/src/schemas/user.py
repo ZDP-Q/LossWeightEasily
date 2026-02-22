@@ -4,7 +4,13 @@ from typing import Optional
 
 
 class UserCreate(BaseModel):
-    username: str = Field(min_length=3, max_length=50)
+    # 限制账号仅支持数字、字母、下划线
+    username: str = Field(
+        min_length=3, 
+        max_length=50, 
+        pattern=r"^[a-zA-Z0-9_]+$",
+        description="账号仅支持数字、字母和下划线"
+    )
     password: str = Field(min_length=6)
     email: Optional[EmailStr] = None
 
@@ -22,6 +28,7 @@ class Token(BaseModel):
 class UserRead(BaseModel):
     id: int
     username: str
+    nickname: Optional[str] = None
     email: Optional[str] = None
     age: Optional[int] = None
     gender: Optional[str] = None
@@ -39,9 +46,11 @@ class UserRead(BaseModel):
 
 
 class UserProfileUpdate(BaseModel):
-    age: int = Field(ge=1, le=150)
-    gender: str = Field(pattern=r"^(male|female|other)$")
-    height_cm: float = Field(ge=50, le=300)
-    initial_weight_kg: float = Field(ge=10, le=500)
-    target_weight_kg: float = Field(ge=10, le=500)
+    # 昵称修改（可选）
+    nickname: Optional[str] = Field(default=None, max_length=50)
+    age: Optional[int] = Field(default=None, ge=1, le=150)
+    gender: Optional[str] = Field(default=None, pattern=r"^(male|female|other)$")
+    height_cm: Optional[float] = Field(default=None, ge=50, le=300)
+    initial_weight_kg: Optional[float] = Field(default=None, ge=10, le=500)
+    target_weight_kg: Optional[float] = Field(default=None, ge=10, le=500)
     activity_level: Optional[str] = Field(default="sedentary")

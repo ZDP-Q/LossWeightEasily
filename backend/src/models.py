@@ -95,6 +95,7 @@ class WeightRecord(WeightRecordBase, table=True):
 
 class UserBase(SQLModel):
     username: str = Field(index=True, unique=True)
+    nickname: Optional[str] = Field(default=None)
     email: Optional[str] = Field(default=None, index=True)
     full_name: Optional[str] = None
     age: Optional[int] = None
@@ -160,6 +161,7 @@ class FoodLog(SQLModel, table=True):
     user_id: Optional[int] = Field(default=None, foreign_key="users.id")
     food_name: str
     calories: float
+    meal_type: Optional[str] = Field(default="unknown") # breakfast, lunch, dinner, snack
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     user: Optional[User] = Relationship(back_populates="food_logs")
 

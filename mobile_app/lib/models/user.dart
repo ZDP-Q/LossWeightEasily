@@ -1,6 +1,7 @@
 class UserProfile {
   final int? id;
   final String username;
+  final String? nickname;
   final String? email;
   final String? fullName;
   final int? age;
@@ -17,6 +18,7 @@ class UserProfile {
   UserProfile({
     this.id,
     required this.username,
+    this.nickname,
     this.email,
     this.fullName,
     this.age,
@@ -31,10 +33,14 @@ class UserProfile {
     this.createdAt,
   });
 
+  // 显示名称逻辑：优先显示昵称，没有则显示账号名
+  String get displayName => (nickname != null && nickname!.isNotEmpty) ? nickname! : username;
+
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
       id: json['id'],
       username: json['username'] ?? '',
+      nickname: json['nickname'],
       email: json['email'],
       fullName: json['full_name'],
       age: json['age'],
@@ -55,6 +61,7 @@ class UserProfile {
   Map<String, dynamic> toJson() {
     return {
       'username': username,
+      'nickname': nickname,
       'email': email,
       'full_name': fullName,
       'age': age,
@@ -72,6 +79,7 @@ class UserProfile {
   UserProfile copyWith({
     int? id,
     String? username,
+    String? nickname,
     String? email,
     String? fullName,
     int? age,
@@ -88,6 +96,7 @@ class UserProfile {
     return UserProfile(
       id: id ?? this.id,
       username: username ?? this.username,
+      nickname: nickname ?? this.nickname,
       email: email ?? this.email,
       fullName: fullName ?? this.fullName,
       age: age ?? this.age,

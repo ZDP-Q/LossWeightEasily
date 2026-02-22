@@ -70,18 +70,36 @@ class _UserScreenState extends State<UserScreen> {
           child: Icon(Icons.person, size: 50, color: Colors.white),
         ),
         const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              provider.displayName,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        InkWell(
+          onTap: () => _showEditDialog(context, provider, null, 'nickname', '修改昵称'),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      provider.displayName,
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.edit_outlined, size: 16, color: AppColors.primary),
+                  ],
+                ),
+                Text(
+                  '@${provider.user?.username ?? "unknown"}',
+                  style: TextStyle(color: secondaryColor, fontSize: 13),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
+        const SizedBox(height: 4),
         Text(
           provider.hasUser ? '已开启减重之旅' : '暂未设置资料',
-          style: TextStyle(color: secondaryColor),
+          style: TextStyle(color: secondaryColor, fontSize: 13),
         ),
       ],
     );
@@ -226,6 +244,7 @@ class _UserScreenState extends State<UserScreen> {
     final controller = TextEditingController();
     String? currentVal;
 
+    if (field == 'nickname') currentVal = provider.user?.nickname;
     if (field == 'age') currentVal = provider.user?.age?.toString();
     if (field == 'height_cm') currentVal = provider.user?.heightCm?.toString();
     if (field == 'target_weight_kg') currentVal = provider.user?.targetWeightKg?.toString();
@@ -243,7 +262,7 @@ class _UserScreenState extends State<UserScreen> {
           controller: controller,
           autofocus: true,
           decoration: InputDecoration(hintText: '请输入新的$title'),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          keyboardType: field == 'nickname' ? TextInputType.text : const TextInputType.numberWithOptions(decimal: true),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
@@ -254,6 +273,11 @@ class _UserScreenState extends State<UserScreen> {
                   final val = double.tryParse(controller.text);
                   if (val != null && weightProvider != null) {
                     await weightProvider.addRecord(val);
+                  }
+                } else if (field == 'nickname') {
+                  final val = controller.text.trim();
+                  if (val.isNotEmpty) {
+                    await provider.updateProfile(nickname: val);
                   }
                 } else {
                    final val = double.tryParse(controller.text);
@@ -470,7 +494,6 @@ class _UserScreenState extends State<UserScreen> {
     await context.read<AuthProvider>().logout();
 
     // 3. 兜底操作：显式回到根路由并清空栈
-    // 根路由 '/' 渲染的是 RootNavigator，它会根据最新的 auth 状态展示正确的页面
     if (context.mounted) {
       Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil('/', (route) => false);
     }

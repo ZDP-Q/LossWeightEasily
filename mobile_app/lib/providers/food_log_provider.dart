@@ -38,9 +38,9 @@ class FoodLogProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addLog(String foodName, double calories) async {
+  Future<void> addLog(String foodName, double calories, {String? mealType}) async {
     try {
-      final newLog = await _api.addFoodLog(foodName, calories);
+      final newLog = await _api.addFoodLog(foodName, calories, mealType: mealType);
       _todayLogs.add(newLog);
       notifyListeners();
     } catch (e) {

@@ -30,6 +30,7 @@ def create_food_log(
         user_id=user_id,
         food_name=data.food_name,
         calories=data.calories,
+        meal_type=data.meal_type or "unknown",
         timestamp=data.timestamp or datetime.now(timezone.utc),
     )
     session.add(log)
